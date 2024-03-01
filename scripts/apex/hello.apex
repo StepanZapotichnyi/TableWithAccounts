@@ -1,0 +1,1 @@
+AccountIntegrationController.getDetails();

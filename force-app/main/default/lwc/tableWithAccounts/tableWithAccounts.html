@@ -1,0 +1,32 @@
+<template>
+    <lightning-card label="Table with Accounts" title="Accounts from another Org">
+        <template lwc:if={isLoading}>
+            <div class="spinner">
+                <lightning-spinner alternative-text="Loading" size="small"></lightning-spinner>
+            </div>
+        </template>
+        
+        <template lwc:if={listAcc} >
+            <div class="slds-m-around_medium ">
+                <lightning-datatable key-field="Id" 
+                                     data={listAcc} 
+                                     columns={columns} 
+                                     hide-checkbox-column = "true" 
+                                     show-row-number-column='true'
+                                     draft-values={fildsItemValues}>
+                </lightning-datatable> 
+            </div>
+        </template>
+        
+
+        
+        <div class="slds-m-around_medium">
+            <lightning-button label="Update" onclick={handleUpdate} variant="brand"></lightning-button>
+            <div class="slds-float_right">
+                <c-paginator onprevious={prevHandel} page={page}  total-page={totalPage} onnext={nextHandel}>
+        
+                </c-paginator>
+            </div>
+        </div>
+    </lightning-card>
+</template>
