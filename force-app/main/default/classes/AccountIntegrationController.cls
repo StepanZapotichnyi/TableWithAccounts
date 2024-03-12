@@ -5,19 +5,19 @@ public class AccountIntegrationController {
 
         HttpRequest req = new HttpRequest();
         req.setEndpoint('callout:ReturnContact/services/apexrest/Account');
-        req.setHeader('content-type', 'aplication/json; charset=UTF-8');
+        req.setHeader('content-type', 'application/json; charset=UTF-8');
         req.setHeader('Accept', 'application/json');
         req.setMethod('GET');
         Http http = new Http();
         HttpResponse respon =  http.send(req);
         
         System.debug('response---Code------' + respon.getStatusCode());
-        System.debug('response---body------' + respon.getBody());
+        // System.debug('response---body------' + respon.getBody());
         List<Account> accounts = new List<Account>();
 
         if(respon.getStatusCode() == 200) {
             List<Object> jsonResults = (List<Object>) JSON.DeserializeUntyped(respon.getBody());
-            System.debug('jsonResults'+jsonResults);
+            // System.debug('jsonResults'+jsonResults);
              for (object ac : jsonResults) {
                 Map<String, Object> acMap = (Map<String, Object>)ac;
                 Account account = new Account();
@@ -35,13 +35,50 @@ public class AccountIntegrationController {
             System.debug('Error: HTTP request failed with status code ' + respon.getStatusCode());
             throw new CalloutException('Error: HTTP request failed with status code ' + respon.getStatusCode());
         }  
-            System.debug('List accounts++++' + accounts);
+            // System.debug('List accounts++++' + accounts);
             return accounts;
+    }
+        
+    @AuraEnabled
+    public static String patchDetails(String accData) {
+    
+        System.debug('Patch details: ' + accData);
+    
+        HttpRequest req = new HttpRequest();
+        req.setEndpoint('callout:ReturnContact/services/apexrest/Account');
+        req.setHeader('Content-Type', 'application/json; charset=UTF-8');
+        req.setHeader('Accept', 'application/json');
+        req.setBody(accData); 
+        req.setMethod('PATCH');
+        Http http = new Http();
+        HttpResponse response = http.send(req);
+
+        if(response.getStatusCode() == 200) {
+            System.debug('response: ' + response.getStatusCode());
+            System.debug('response: ' + response.getBody());
+            return 'Success';
+        }
+        return 'Failed';
+        
     }
     
     @AuraEnabled
     public static List<Account> returnAccounts() {
-        System.debug('return' + [SELECT Id, Name, Type, AccountNumber, Rating, TickerSymbol FROM Account]);
         return [SELECT Id, Name, Type, AccountNumber, Rating, TickerSymbol FROM Account];
+    }
+
+    @AuraEnabled
+    public static String updateReturnAccounts(Object accountData){
+        
+        List<Account> accList = (List<Account>) JSON.deserialize(JSON.serialize(accountData), List<Account>.class);
+        
+        if(!accList.isEmpty()) {
+            update accList;
+            return 'Success';
+        }
+
+        return 'Failed';
+
+        
     }
 }

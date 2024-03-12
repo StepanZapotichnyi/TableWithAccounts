@@ -12,8 +12,10 @@
                                      data={listAcc} 
                                      columns={columns} 
                                      hide-checkbox-column = "true" 
-                                     show-row-number-column='true'
-                                     draft-values={fildsItemValues}>
+                                     show-row-number-column="true"
+                                     onsave={handelSave}
+                                     oncancel={handelCancel}
+                                     draft-values={draftValues}>
                 </lightning-datatable> 
             </div>
         </template>
