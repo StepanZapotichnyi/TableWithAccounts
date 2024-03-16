@@ -78,10 +78,11 @@ global class SalesforceAccountFromIntegration {
        return resAccList;
     }
     
+    
     global class AccountUpdate {
     	public ID Id;
         public String Type;
-        public String AccountNumber;
+       	public String AccountNumber;
         public String Rating;
         public String TickerSymbol;
         public String message;
