@@ -8,7 +8,6 @@ import { refreshApex } from '@salesforce/apex';
 
 const pageSize = 7;   
 const columns = [
-    //add colum org
     {label: 'Name', fieldName : 'name'},
     {label: 'Account Number', fieldName : 'accountNumber', editable : true},
     {label: 'Ticker Symbol', fieldName : 'tickerSymbol', editable : true},
@@ -40,19 +39,14 @@ export default class TableWithAccounts extends LightningElement {
 
     loadingAccounts() {
         this.isLoading = true;
-        
-
-        this.returnAccIds = returnAccounts();
-        this.detailsIds = getDetails();
-        console.log('result 1+++' + this.detailsIds);
-        console.log('result 1+++' + this.returnAccIds);
 
         Promise.all([getDetails(), returnAccounts()])
             .then(responses => {
                 this.detailsIds = responses[0].map(detail => detail.Id);
+                console.log('result DetailsIds' + this.detailsIds);
+                
                 this.returnAccIds = responses[1].map(account => account.Id);
-                console.log('result' + this.detailsIds);
-                console.log('result' + this.returnAccIds);
+                console.log('result returnAccIds' + this.returnAccIds);
 
                 responses.forEach(response => {
                     this.combinedAccounts = this.combinedAccounts.concat(response.map(acc => ({
@@ -62,7 +56,7 @@ export default class TableWithAccounts extends LightningElement {
                         rating: acc.Rating,
                         tickerSymbol: acc.TickerSymbol,
                         type: acc.Type,
-                        org : this.checkingOrg(acc.Id)
+                        org : this.identifyOrganization(acc.Id)
                     })));
                 });
 
@@ -80,18 +74,8 @@ export default class TableWithAccounts extends LightningElement {
             });
     }
 
-    checkingOrg(idAccount) {
-        
-        if (this.detailsIds.includes(idAccount)) {
-            let detailsOrg = 'Org First';
-            return detailsOrg;
-
-        }else if (this.returnAccIds.includes(idAccount)) {
-            let returnAccOrg = 'Org Second';
-            return returnAccOrg;
-        }
-        return 'unknown';
-    
+    identifyOrganization(idAccount) {
+        return this.detailsIds.includes(idAccount) ? 'Org First' : (this.returnAccIds.includes(idAccount) ? 'Org Second' : 'unknown');
     }
 
     prevHandel(event) {
@@ -118,9 +102,7 @@ export default class TableWithAccounts extends LightningElement {
     handelSave(event) {
         this.isLoading = true;
         let draftValues = event.detail.draftValues;
-        let promisesAll = [];
-
-        // const accountIds = updatedFields.map(obj => obj.Id);            
+        let promisesAll = [];           
 
         draftValues.forEach(field => {
             if (this.returnAccIds.includes(field.Id)) {
@@ -157,6 +139,7 @@ export default class TableWithAccounts extends LightningElement {
                 this.isLoading = false;
             });
     }
+
     handelCancel(event){
         this.draftValues = []; 
     }
