@@ -9,21 +9,22 @@ global class SalesforceAccountFromIntegration {
     }
    	
     @HttpPatch
-    global static List<AccountUpdate> updateAccount() {
+    global static List<AccountWrapper> updateAccount() {
         
         System.debug('Patch');
         Integer accUpdateCount = 0;
-        List<AccountUpdate> resAccList = new List<AccountUpdate>();
+        List<AccountWrapper> resAccList = new List<AccountWrapper>();
         List<Account> updateListAcc = new List<Account>();
         
         RestRequest accountRequest = RestContext.request;
         String requestBody = accountRequest.requestBody.toString();
-        System.debug('requestBody' + requestBody);  
-        List<AccountUpdate> accountsToUpdate = (List<AccountUpdate>) JSON.deserialize(requestBody, List<AccountUpdate>.class);
+        System.debug('requestBody' + requestBody); 
+        
+        List<AccountWrapper> accountsToUpdate = (List<AccountWrapper>) JSON.deserialize(requestBody, List<AccountWrapper>.class);
          System.debug('to ' + accountsToUpdate);
         
         Set<Id> accountIds = new Set<Id>();
-        for(AccountUpdate aU : accountsToUpdate) {
+        for(AccountWrapper aU : accountsToUpdate) {
             accountIds.add(aU.Id);
         }
         System.debug(accountIds);
@@ -40,7 +41,7 @@ global class SalesforceAccountFromIntegration {
         System.debug(thisAccList);
         for(Account acc : thisAccList) {
             
-            for(AccountUpdate accUp : accountsToUpdate) {
+            for(AccountWrapper accUp : accountsToUpdate) {
                 if(acc.Id == accUp.Id) {
                     if (accUp.Type != null) {
                     acc.Type = accUp.Type;
@@ -63,13 +64,13 @@ global class SalesforceAccountFromIntegration {
     	System.debug('result' + updateListAcc);
         if(!updateListAcc.isEmpty()){
         	update updateListAcc;
-             for (AccountUpdate accUpdate : accountsToUpdate) {
+             for (AccountWrapper accUpdate : accountsToUpdate) {
                 accUpdate.success = accUpdateCount.toString();
                 accUpdate.message = 'Successfully updated ' + accUpdateCount + ' accounts.';
                 resAccList.add(accUpdate);
             }
         }else{
-             for (AccountUpdate accUpdate : accountsToUpdate) {
+             for (AccountWrapper accUpdate : accountsToUpdate) {
             	accUpdate.success = 'Null';
             	accUpdate.message = 'Failed to update accounts. Error!' ;
             	resAccList.add(accUpdate);
@@ -79,7 +80,7 @@ global class SalesforceAccountFromIntegration {
     }
     
     
-    global class AccountUpdate {
+    global class AccountWrapper {
     	public ID Id;
         public String Type;
        	public String AccountNumber;

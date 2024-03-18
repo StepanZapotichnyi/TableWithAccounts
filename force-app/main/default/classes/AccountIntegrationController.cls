@@ -7,25 +7,13 @@ public class AccountIntegrationController {
         String body = '';
         List<Account> accounts = new List<Account>();
 
-        Map<Integer, String> response = AccountCallouts.executeHttpRequest(ACCOUNTS_ENDPOINT, method, body, false);
-         if(response.containsKey(200)) {
-            String responseBody = response.get(200);
-            List<Object> listAccounts = (List<Object>) JSON.DeserializeUntyped(responseBody);
-             for (object acc : listAccounts) {
-                Map<String, Object> accountMap = (Map<String, Object>)acc;
-                Account account = new Account();
-                account.Id = (Id) accountMap.get('Id');
-                account.Name = (String) accountMap.get('Name');
-                account.AccountNumber = (String) accountMap.get('AccountNumber');
-                account.Rating = (String) accountMap.get('Rating');
-                account.TickerSymbol = (String) accountMap.get('TickerSymbol');
-                account.Type = (String) accountMap.get('Type');
+        HttpCallouts.HttpResponseWrapper response = HttpCallouts.executeHttpRequest(ACCOUNTS_ENDPOINT, method, body);
 
-                accounts.add(account);
-             }    
+        if(response.statusCode == 200 &&  response.statusCode < 300) {
+            accounts = (List<Account>) JSON.deserialize(response.responseBody, List<Account>.class);
         }else{
-            throw new CalloutException('Error: HTTP request failed with status code ' + response.keySet());
-        } 
+            throw new CalloutException('Error: HTTP request failed with status code ' + response.statusCode);
+        }
         return accounts;
     }
         
@@ -33,11 +21,12 @@ public class AccountIntegrationController {
     public static String patchDetails(String accData) {
         String method = 'PATCH';
         String body = accData;
-        Map<Integer, String> response = AccountCallouts.executeHttpRequest(ACCOUNTS_ENDPOINT, method, body, true);
-
-        if(response.containsKey(200)) {
-            System.debug('response: ' + response.keySet());
-            System.debug('response: ' +  response.get(200));
+        
+        HttpCallouts.HttpResponseWrapper response = HttpCallouts.executeHttpRequest(ACCOUNTS_ENDPOINT, method, body);
+        System.debug(response);
+        if(response.statusCode == 200 &&  response.statusCode < 300) {
+            System.debug('response: ' + response.statusCode);
+            System.debug('response: ' +  response.responseBody);
             return 'Success';
         }
         return 'Failed';

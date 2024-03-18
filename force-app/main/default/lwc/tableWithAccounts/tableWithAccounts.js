@@ -99,48 +99,40 @@ export default class TableWithAccounts extends LightningElement {
     }
 
 
-    handelSave(event) {
-        this.isLoading = true;
+    handleSave(event) {
         let draftValues = event.detail.draftValues;
         let promisesAll = [];           
 
         draftValues.forEach(field => {
             if (this.returnAccIds.includes(field.Id)) {
-                let returnUpdatedParam = [];
-                returnUpdatedParam.push(field);
-
-                if(returnUpdatedParam.length > 0) {
-                    promisesAll.push(updateReturnAccounts({accountData : returnUpdatedParam}));
-                }
-            }
-            else if (this.detailsIds.includes(field.Id)) {
-                let patchUpdatedParam = [];
-                patchUpdatedParam.push(field);
-                
-                if(patchUpdatedParam.length > 0) {
-                    let patchUpdatedParamString = JSON.stringify(patchUpdatedParam);
-                    promisesAll.push(patchDetails({accData : patchUpdatedParamString}));
-                }
+                promisesAll.push(updateReturnAccounts({ accountData: [field] }));
+            } else if (this.detailsIds.includes(field.Id)) {
+                let patchUpdatedParamString = JSON.stringify([field]);
+                promisesAll.push(patchDetails({ accData: patchUpdatedParamString }));
             }
         });
-        
-        Promise.all(promisesAll)
-            .then (result =>  {
-                console.log('apex res ' + JSON.stringify(result));
-                this.combinedAccounts = [];
-                refreshApex(this.loadingAccounts());
-                this.showToast('Success', 'Records Updated Successfully!', 'success');
-            })
-            .catch (err => {
-                console.log('apex err ' + JSON.stringify(err));
-                this.showToast('Error', 'Changes not saved!', 'error');
-            }) 
-            .finally(() => {
-                this.isLoading = false;
-            });
+        this.handlePromises(promisesAll);
+        this.combinedAccounts = [];
+        refreshApex(this.loadingAccounts());
     }
 
-    handelCancel(event){
+    handlePromises(promisesAll) {
+        this.isLoading = true;
+        
+        Promise.all(promisesAll)
+        .then (result =>  {
+            this.showToast('Success', 'Records Updated Successfully!', 'success');
+        })
+        .catch (err => {
+            console.log('apex err ' + JSON.stringify(err));
+            this.showToast('Error', 'Changes not saved!', 'error');
+        }) 
+        .finally(() => {
+            this.isLoading = false;
+        });
+    }
+
+    handleCancel(event){
         this.draftValues = []; 
     }
 
