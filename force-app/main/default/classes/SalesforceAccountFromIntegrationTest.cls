@@ -1,24 +1,9 @@
 @isTest
-public class TestSalesforceAccountFromIntegration {
-	
-    public static List<Account> createTestAccount(Integer numAccounts) {
-        List<Account> accs = new List<Account>();
-        for(Integer i = 0; i < numAccounts; i++) {
-            Account acc = new Account();
-            acc.Name = 'Test account' +i;
-            acc.Type = 'Prospect';
-            acc.AccountNumber = 'CD' + i ;
-            acc.Rating = 'Hot Test';
-            acc.TickerSymbol = 'Ticker';
-            accs.add(acc);
-        }
-        return accs;
-    }
-    
+public class SalesforceAccountFromIntegrationTest {
     @isTest
 	static void testGetAccount() {
-    	
-    	List<Account> testAccounts = createTestAccount(10);
+    	// Create test data
+    	List<Account> testAccounts = TestUtility.createTestAccount(10);
         insert testAccounts;
         
         RestRequest request = new RestRequest();
@@ -28,7 +13,7 @@ public class TestSalesforceAccountFromIntegration {
         RestContext.request = request;
  
    		List<Account> results = SalesforceAccountFromIntegration.getAccount();      
-
+        // Assert the results
         System.assert(results != null, 'Result should not be null');
         System.assertEquals(10, results.size(), 'Incorrect number of accounts returned');
 	}
@@ -36,13 +21,13 @@ public class TestSalesforceAccountFromIntegration {
     @isTest
     static void testUpdateAccountPositive() {
         
-        List<Account> testAccounts = createTestAccount(10);
+        List<Account> testAccounts = TestUtility.createTestAccount(10);
         insert testAccounts;
         
-        List<SalesforceAccountFromIntegration.AccountUpdate> accToUpdate = new List<SalesforceAccountFromIntegration.AccountUpdate>();
+        List<SalesforceAccountFromIntegration.AccountWrapper> accToUpdate = new List<SalesforceAccountFromIntegration.AccountWrapper>();
         
        for (Account acc : testAccounts) {
-           SalesforceAccountFromIntegration.AccountUpdate updateAccount = new SalesforceAccountFromIntegration.AccountUpdate();
+           SalesforceAccountFromIntegration.AccountWrapper updateAccount = new SalesforceAccountFromIntegration.AccountWrapper();
        		 updateAccount.Id = acc.Id;
            	 updateAccount.Type = 'Partner';
 			 updateAccount.AccountNumber = 'New Account Number';
@@ -57,11 +42,11 @@ public class TestSalesforceAccountFromIntegration {
         request.requestBody = Blob.valueOf(JSON.serialize(accToUpdate));
         RestContext.request = request;
         
-    	List<SalesforceAccountFromIntegration.AccountUpdate> results = SalesforceAccountFromIntegration.updateAccount();
+    	List<SalesforceAccountFromIntegration.AccountWrapper> results = SalesforceAccountFromIntegration.updateAccount();
     	
         System.assert(results != null, 'Result should not be null');
         System.assertEquals(10, results.size(), 'Incorrect number of updates returned');
-        for (SalesforceAccountFromIntegration.AccountUpdate accUpdate : results) {
+        for (SalesforceAccountFromIntegration.AccountWrapper accUpdate : results) {
      	   System.assertEquals('10', accUpdate.success, 'All accounts should be successfully updated');
            System.assertEquals('Successfully updated 10 accounts.', accUpdate.message, 'Message is not correct');
   		}
@@ -69,13 +54,13 @@ public class TestSalesforceAccountFromIntegration {
     
     @isTest 
     static void testUpdateAccountNegative() {
-       List<Account> testAccounts = createTestAccount(10);
+       List<Account> testAccounts = TestUtility.createTestAccount(10);
        insert testAccounts;
         
-       List<SalesforceAccountFromIntegration.AccountUpdate> accToUpdate = new List<SalesforceAccountFromIntegration.AccountUpdate>();
+       List<SalesforceAccountFromIntegration.AccountWrapper> accToUpdate = new List<SalesforceAccountFromIntegration.AccountWrapper>();
         	
        for (Account acc : testAccounts) {
-           SalesforceAccountFromIntegration.AccountUpdate updateAccount = new SalesforceAccountFromIntegration.AccountUpdate();
+           SalesforceAccountFromIntegration.AccountWrapper updateAccount = new SalesforceAccountFromIntegration.AccountWrapper();
        		 updateAccount.Id = null;
            	 updateAccount.Type = null;
 			 updateAccount.AccountNumber = null;
@@ -90,10 +75,10 @@ public class TestSalesforceAccountFromIntegration {
         request.requestBody = Blob.valueOf(JSON.serialize(accToUpdate));
         RestContext.request = request;
       
-   		List<SalesforceAccountFromIntegration.AccountUpdate> results = SalesforceAccountFromIntegration.updateAccount();
+   		List<SalesforceAccountFromIntegration.AccountWrapper> results = SalesforceAccountFromIntegration.updateAccount();
         
         System.assert(results != null, 'Result should not be null');
-        for (SalesforceAccountFromIntegration.AccountUpdate accUpdate : results) {
+        for (SalesforceAccountFromIntegration.AccountWrapper accUpdate : results) {
      	   System.assertEquals('Null', accUpdate.success, 'All accounts should be not updated');
            System.assertEquals('Failed to update accounts. Error!', accUpdate.message, 'Message is not correct');
   		}
