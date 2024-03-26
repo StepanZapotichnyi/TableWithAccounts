@@ -2,7 +2,7 @@ public class AccountIntegrationController {
     public static String ACCOUNTS_ENDPOINT = '/services/apexrest/Account';
 
     @AuraEnabled
-    public static List<Account> getDetails() {
+    public static List<Account> getAccountsFromAnotherOrg() {
         String method = 'GET';
         String body = '';
         List<Account> accounts = new List<Account>();
@@ -18,37 +18,33 @@ public class AccountIntegrationController {
     }
         
     @AuraEnabled
-    public static String patchDetails(String accData) {
+    public static void patchAccountsInAnotherOrg(String accData) {
         String method = 'PATCH';
         String body = accData;
         
         HttpCallouts.HttpResponseWrapper response = HttpCallouts.executeHttpRequest(ACCOUNTS_ENDPOINT, method, body);
         System.debug(response);
-        if(response.statusCode == 200 &&  response.statusCode < 300) {
+        if(response.statusCode != 200 &&  response.statusCode > 299) {
             System.debug('response: ' + response.statusCode);
             System.debug('response: ' +  response.responseBody);
-            return 'Success';
+            throw new CalloutException('Error: HTTP request failed with status code ' + response.statusCode);
         }
-        return 'Failed';
         
     }
     
     @AuraEnabled
-    public static List<Account> returnAccounts() {
-        return [SELECT Id, Name, Type, AccountNumber, Rating, TickerSymbol FROM Account];
+    public static List<Account> getAccountsFromData() {
+        return [SELECT Name, Type, AccountNumber, Rating, TickerSymbol FROM Account];
     }
 
     @AuraEnabled
-    public static String updateReturnAccounts(Object accountData){
+    public static void updateAccountsFromData(Object accountData){
         
         List<Account> accountList = (List<Account>) JSON.deserialize(JSON.serialize(accountData), List<Account>.class);
         
         if(!accountList.isEmpty()) {
             update accountList;
-            return 'Success';
         }
-
-        return 'Failed';
     }
 }
 
