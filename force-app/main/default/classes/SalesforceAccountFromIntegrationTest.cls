@@ -24,10 +24,10 @@ public class SalesforceAccountFromIntegrationTest {
         List<Account> testAccounts = TestUtility.createTestAccount(10);
         insert testAccounts;
         
-        List<SalesforceAccountFromIntegration.AccountWrapper> accToUpdate = new List<SalesforceAccountFromIntegration.AccountWrapper>();
+        List<Account> accToUpdate = new List<Account>();
         
        for (Account acc : testAccounts) {
-           SalesforceAccountFromIntegration.AccountWrapper updateAccount = new SalesforceAccountFromIntegration.AccountWrapper();
+           Account updateAccount = new Account();
        		 updateAccount.Id = acc.Id;
            	 updateAccount.Type = 'Partner';
 			 updateAccount.AccountNumber = 'New Account Number';
@@ -42,46 +42,45 @@ public class SalesforceAccountFromIntegrationTest {
         request.requestBody = Blob.valueOf(JSON.serialize(accToUpdate));
         RestContext.request = request;
         
-    	List<SalesforceAccountFromIntegration.AccountWrapper> results = SalesforceAccountFromIntegration.updateAccount();
+    	List<SalesforceAccountFromIntegration.ResponseWrapper> results = SalesforceAccountFromIntegration.updateAccount();
     	
         System.assert(results != null, 'Result should not be null');
         System.assertEquals(10, results.size(), 'Incorrect number of updates returned');
-        for (SalesforceAccountFromIntegration.AccountWrapper accUpdate : results) {
-     	   System.assertEquals('10', accUpdate.success, 'All accounts should be successfully updated');
-           System.assertEquals('Successfully updated 10 accounts.', accUpdate.message, 'Message is not correct');
+        for (SalesforceAccountFromIntegration.ResponseWrapper accUpdate : results) {
+     	   System.assertEquals('1', accUpdate.success, 'All accounts should be successfully updated');
+           System.assertEquals('Successfully updated 1 accounts.', accUpdate.message, 'Message is not correct');
   		}
     }
     
     @isTest 
     static void testUpdateAccountNegative() {
-       List<Account> testAccounts = TestUtility.createTestAccount(10);
-       insert testAccounts;
+        List<Account> testAccounts = TestUtility.createTestAccount(10);
+        insert testAccounts;
         
-       List<SalesforceAccountFromIntegration.AccountWrapper> accToUpdate = new List<SalesforceAccountFromIntegration.AccountWrapper>();
-        	
-       for (Account acc : testAccounts) {
-           SalesforceAccountFromIntegration.AccountWrapper updateAccount = new SalesforceAccountFromIntegration.AccountWrapper();
-       		 updateAccount.Id = null;
-           	 updateAccount.Type = null;
-			 updateAccount.AccountNumber = null;
-           	 updateAccount.Rating = null;
-           	 updateAccount.TickerSymbol = null;
-           	 accToUpdate.add(updateAccount);
+        List<Account> accToUpdate = new List<Account>(); 
+        
+        for (Account acc : testAccounts) {
+            Account updateAccount = new Account();
+           // updateAccount.Id = acc.Id;
+            updateAccount.Type = 'InvalidType';
+            updateAccount.AccountNumber = null;
+            updateAccount.Rating = null;
+            updateAccount.TickerSymbol = null;
+            accToUpdate.add(updateAccount);
         }
-         
+        
         RestRequest request = new RestRequest();
         request.requestUri = '/services/apexrest/Account/';
         request.httpMethod = 'PATCH';
         request.requestBody = Blob.valueOf(JSON.serialize(accToUpdate));
         RestContext.request = request;
-      
-   		List<SalesforceAccountFromIntegration.AccountWrapper> results = SalesforceAccountFromIntegration.updateAccount();
+       
+        List<SalesforceAccountFromIntegration.ResponseWrapper> results = SalesforceAccountFromIntegration.updateAccount();
         
-        System.assert(results != null, 'Result should not be null');
-        for (SalesforceAccountFromIntegration.AccountWrapper accUpdate : results) {
-     	   System.assertEquals('Null', accUpdate.success, 'All accounts should be not updated');
-           System.assertEquals('Failed to update accounts. Error!', accUpdate.message, 'Message is not correct');
-  		}
+       System.assert(results != null, 'Result should not be null');
+   	   for (SalesforceAccountFromIntegration.ResponseWrapper accUpdate : results) {
+         System.assertEquals('0', accUpdate.success, 'All accounts should be successfully updated');
+    }
     }
     
 }

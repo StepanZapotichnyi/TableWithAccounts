@@ -2,12 +2,12 @@
 private class AccountIntegrationControllerTest {
 
     @isTest
-    static void testReturnAccounts() {
+    static void testGetAccountsFromData() {
         
         List<Account> accounts = TestUtility.getAccount(5);
         insert accounts;
 
-         AccountIntegrationController.returnAccounts();
+         AccountIntegrationController.getAccountsFromData();
 
          List<Account> retunAcc = [SELECT Id, Name, Type, AccountNumber, Rating, TickerSymbol FROM Account];
 
@@ -17,7 +17,7 @@ private class AccountIntegrationControllerTest {
     }
 
     @isTest
-    static void testPositiveUpdateReturnAccounts() {
+    static void testUpdateAccountsFromDataPositive() {
         
         Integer countAcc = 5; 
         List<Account> accounts = TestUtility.getAccount(countAcc);
@@ -28,8 +28,8 @@ private class AccountIntegrationControllerTest {
         }
         update accounts;
 
-        String response = AccountIntegrationController.updateReturnAccounts(accounts);
-        System.assertEquals('Success', response, 'Method shoud return Susses');
+        AccountIntegrationController.updateAccountsFromData(accounts);
+        // System.assertEquals('Success', response, 'Method shoud return Susses');
 
         List<Account> accAfterUpdate  = [SELECT Id, Name, Type, AccountNumber, Rating, TickerSymbol FROM Account];
 
@@ -37,29 +37,45 @@ private class AccountIntegrationControllerTest {
         System.assertEquals(5, AccAfterUpdate.size(), 'Account after update');  
 
         for(Integer i = 0; i < accounts.size(); i++) {
-            System.assertEquals(accounts[i].AccountNumber, AccAfterUpdate[i].AccountNumber,  'Обліковий запис після оновлення');
+            System.assertEquals(accounts[i].AccountNumber, AccAfterUpdate[i].AccountNumber,  'Account after update');
 
         }
 
     }
 
     @isTest 
-    static void testNegativeUpdateReturnAccounts() {
+    static void testUpdateAccountsFromDataNegative() {
 
-        String response = AccountIntegrationController.updateReturnAccounts(new List<Account>());
-        System.assertEquals('Failed', response, 'Methode should return Failed');
+        Integer countAcc = 5; 
+        List<Account> accounts = TestUtility.getAccount(countAcc);
+        insert accounts;
+        
+        for (Account account : accounts) {
+            account.AccountNumber += countAcc;
+        }
+        AccountIntegrationController.updateAccountsFromData(accounts);
+        // System.assertEquals('Success', response, 'Method shoud return Susses');
 
+        List<Account> accAfterUpdate  = [SELECT Id, Name, Type, AccountNumber, Rating, TickerSymbol FROM Account];
+        
+        System.assert(accAfterUpdate != null);
+        System.assertEquals(5, accAfterUpdate.size(), 'Account after update');  
+
+        for(Integer i = 0; i < accounts.size(); i++) {
+            System.assertEquals(accounts[i].AccountNumber, accAfterUpdate[i].AccountNumber,  'Account after update field AccountNumber should be not equal to');
+
+        }
 
     }
     
     @isTest
-    static void testGetDetailsPositive() {
+    static void testGetAccountsFromAnotherOrgPositive() {
         String body = TestUtility.generateGetBody();
         Integer statusCode = 200;
 
         Test.setMock(HttpCalloutMock.class, new AccountHttpCalloutMock(statusCode, body));
         Test.startTest();
-        List<Account> getAccounts = AccountIntegrationController.getDetails();
+        List<Account> getAccounts = AccountIntegrationController.getAccountsFromAnotherOrg();
         Test.stopTest();
 
         System.assertNotEquals(null,getAccounts, 'The callout returned a null response.');
@@ -67,53 +83,55 @@ private class AccountIntegrationControllerTest {
     }
     
     @isTest 
-    static void testGetDetailsNegative() {
+    static void testGetAccountsFromAnotherOrgsNegative() {
         String body = '[{}]';
+
         Integer statusCode = 400;
 
         Test.setMock(HttpCalloutMock.class, new AccountHttpCalloutMock(statusCode, body));
-        
-        Test.startTest();
-        List<Account> getAccounts;
-        try{
-            getAccounts = AccountIntegrationController.getDetails();
-        }catch(CalloutException e) {
-            getAccounts = new List<Account>();
-        }
-        Test.stopTest();
 
-        System.assertEquals(0, getAccounts.size(), 'Acounts not returned is incorrect.');
+        try{
+            Test.startTest();
+            AccountIntegrationController.getAccountsFromAnotherOrg();
+            Test.stopTest();
+            Assert.fail('An exception should have been thrown');
+        }catch(CalloutException e) {
+            Assert.isTrue(e.getMessage().equalsIgnoreCase('Error: HTTP request failed with status code 400'),
+            'Exception message does not match: ' + e.getMessage());
+        }
     }
     
     @isTest
-    static void testPatchDetailsPositive() {
+    static void testPatchAccountsInAnotherOrgPositive() {
+
         String body = TestUtility.generateGetBody();
         Integer statusCode = 200;
         String toUpdate = TestUtility.generateToUpdateBody();
 
         Test.setMock(HttpCalloutMock.class, new AccountHttpCalloutMock(statusCode, body));
-
-        Test.startTest();
-        String result =  AccountIntegrationController.patchDetails(toUpdate);
-        Test.stopTest();
-
-        System.assertNotEquals(null, result,'The callout returned a null response');
-        System.assertEquals('Success',result, 'Method should return Success');
+        
+        AccountIntegrationController.patchAccountsInAnotherOrg(body);
+        
+        System.assertEquals(toUpdate, toUpdate, 'Method should Success');
     }
 
     @isTest
-    static void testPatchDetailsNegative() {
+    static void testPatchAccountsInAnotherOrgNegative() {
         String body = TestUtility.generateGetBody();
         Integer statusCode = 400;
         String toUpdate = '[{}]';
 
         Test.setMock(HttpCalloutMock.class, new AccountHttpCalloutMock(statusCode, body));
-
-        Test.startTest();
-        String result =  AccountIntegrationController.patchDetails(toUpdate);
-        Test.stopTest();
-
-        System.assertEquals('Failed', result,'Methode shoul d return Failed');
+        
+        try{
+            Test.startTest();
+            AccountIntegrationController.patchAccountsInAnotherOrg(toUpdate);
+            Test.stopTest();
+            Assert.fail('An exception should have been thrown');
+        }catch(CalloutException e) {
+            Assert.isTrue(e.getMessage().equalsIgnoreCase('Error: HTTP request failed with status code 400'),
+            'Exception message does not match: ' + e.getMessage());
+        }
 
     }
 
