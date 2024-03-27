@@ -1,8 +1,8 @@
 import { LightningElement, api } from 'lwc';
 
 export default class Paginator extends LightningElement {
-    @api page;
-    @api totalPage;
+    @api pageNumber;
+    @api numberOfPages;
     
     handelPrevious(event) {
         this.dispatchEvent(new CustomEvent('previous'));

@@ -1,14 +1,13 @@
 import { LightningElement, track } from 'lwc';
-import getDetails from '@salesforce/apex/AccountIntegrationController.getDetails';
-import patchDetails from '@salesforce/apex/AccountIntegrationController.patchDetails';
-import returnAccounts from '@salesforce/apex/AccountIntegrationController.returnAccounts';
-import updateReturnAccounts from '@salesforce/apex/AccountIntegrationController.updateReturnAccounts';
+import getAccountsFromAnotherOrg from '@salesforce/apex/AccountIntegrationController.getAccountsFromAnotherOrg';
+import patchAccountsInAnotherOrg from '@salesforce/apex/AccountIntegrationController.patchAccountsInAnotherOrg';
+import getAccountsFromData from '@salesforce/apex/AccountIntegrationController.getAccountsFromData';
+import updateAccountsFromData from '@salesforce/apex/AccountIntegrationController.updateAccountsFromData';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import { refreshApex } from '@salesforce/apex';
 
-const pageSize = 7;   
-const columns = [
-    //add colum org
+const PAGE_SIZE = 7;   
+const COLUMNS = [
     {label: 'Name', fieldName : 'name'},
     {label: 'Account Number', fieldName : 'accountNumber', editable : true},
     {label: 'Ticker Symbol', fieldName : 'tickerSymbol', editable : true},
@@ -18,20 +17,20 @@ const columns = [
 ];
 export default class TableWithAccounts extends LightningElement {
 
-    @track listAcc = [];
-    @track isLoading = false;
-    @track page = 1;
-    @track totalPage;
+    @track accountsList = [];
+    @track pageNumber = 1;
+    @track numberOfPages;
     @track draftValues = [];
-
+    
     returnAccIds = [];
     detailsIds = [];
-
+    
+    isLoading = false;
     combinedAccounts = [];
-    startingRecord = 1;
-    endingRecord = 0;
+    startingPageIndex = 1;
+    endingPageIndex = 0;
     totalRecordCount;
-    columns = columns;
+    columns = COLUMNS;
 
 
     connectedCallback() { 
@@ -40,36 +39,31 @@ export default class TableWithAccounts extends LightningElement {
 
     loadingAccounts() {
         this.isLoading = true;
-        
 
-        this.returnAccIds = returnAccounts();
-        this.detailsIds = getDetails();
-        console.log('result 1+++' + this.detailsIds);
-        console.log('result 1+++' + this.returnAccIds);
-
-        Promise.all([getDetails(), returnAccounts()])
+        Promise.all([getAccountsFromAnotherOrg(), getAccountsFromData()])
             .then(responses => {
                 this.detailsIds = responses[0].map(detail => detail.Id);
+                console.log('result DetailsIds' + this.detailsIds);
+                
                 this.returnAccIds = responses[1].map(account => account.Id);
-                console.log('result' + this.detailsIds);
-                console.log('result' + this.returnAccIds);
-
-                responses.forEach(response => {
-                    this.combinedAccounts = this.combinedAccounts.concat(response.map(acc => ({
-                        Id: acc.Id,
-                        name: acc.Name,
-                        accountNumber: acc.AccountNumber,
-                        rating: acc.Rating,
-                        tickerSymbol: acc.TickerSymbol,
-                        type: acc.Type,
-                        org : this.checkingOrg(acc.Id)
-                    })));
-                });
-
+                console.log('result returnAccIds' + this.returnAccIds);
+                
+                 responses.forEach(response => {
+                        let mappedResponse = response.map(acc => ({
+                            Id: acc.Id,
+                            name: acc.Name,
+                            accountNumber: acc.AccountNumber,
+                            rating: acc.Rating,
+                            tickerSymbol: acc.TickerSymbol,
+                            type: acc.Type,
+                            org : this.identifyOrganization(acc.Id)
+                        }));
+                        this.combinedAccounts = this.combinedAccounts.concat(mappedResponse);
+                    });
 
                 this.totalRecordCount = this.combinedAccounts.length;
-                this.totalPage = Math.ceil(this.totalRecordCount/ pageSize);
-                this.displayRecordPerPage(this.page);
+                this.numberOfPages = Math.ceil(this.totalRecordCount/ PAGE_SIZE);
+                this.displayRecordPerPage(this.pageNumber);
 
             })
             .catch(error => {
@@ -80,84 +74,65 @@ export default class TableWithAccounts extends LightningElement {
             });
     }
 
-    checkingOrg(idAccount) {
-        
-        if (this.detailsIds.includes(idAccount)) {
-            let detailsOrg = 'Org First';
-            return detailsOrg;
-
-        }else if (this.returnAccIds.includes(idAccount)) {
-            let returnAccOrg = 'Org Second';
-            return returnAccOrg;
-        }
-        return 'unknown';
-    
+    identifyOrganization(idAccount) {
+        return this.detailsIds.includes(idAccount) ? 'Org First' : (this.returnAccIds.includes(idAccount) ? 'Org Second' : 'unknown');
     }
 
     prevHandel(event) {
-        if(this.page > 1) {
-            this.page -= 1;
-            this.displayRecordPerPage(this.page);
+        if(this.pageNumber > 1) {
+            this.pageNumber -= 1;
+            this.displayRecordPerPage(this.pageNumber);
         }
     }
 
     nextHandel(event) {
-        if(this.page < this.totalPage && this.page !== this.totalPage) {
-            this.page += 1;
-            this.displayRecordPerPage(this.page);
+        if(this.pageNumber < this.numberOfPages && this.page !== this.numberOfPages) {
+            this.pageNumber += 1;
+            this.displayRecordPerPage(this.pageNumber);
         }
     }
 
     displayRecordPerPage(page) {
-        this.startingRecord = (page - 1) * pageSize;
-        this.endingRecord = page * pageSize;
-        this.listAcc = this.combinedAccounts.slice(this.startingRecord, this.endingRecord);
+        this.startingPageIndex = (page - 1) * PAGE_SIZE;
+        this.endingPageIndex = page * PAGE_SIZE;
+        this.accountsList = this.combinedAccounts.slice(this.startingPageIndex, this.endingPageIndex);
     }
 
 
-    handelSave(event) {
-        this.isLoading = true;
+    handleSave(event) {
         let draftValues = event.detail.draftValues;
-        let promisesAll = [];
-
-        // const accountIds = updatedFields.map(obj => obj.Id);            
+        let promisesAll = [];           
 
         draftValues.forEach(field => {
             if (this.returnAccIds.includes(field.Id)) {
-                let returnUpdatedParam = [];
-                returnUpdatedParam.push(field);
-
-                if(returnUpdatedParam.length > 0) {
-                    promisesAll.push(updateReturnAccounts({accountData : returnUpdatedParam}));
-                }
-            }
-            else if (this.detailsIds.includes(field.Id)) {
-                let patchUpdatedParam = [];
-                patchUpdatedParam.push(field);
-                
-                if(patchUpdatedParam.length > 0) {
-                    let patchUpdatedParamString = JSON.stringify(patchUpdatedParam);
-                    promisesAll.push(patchDetails({accData : patchUpdatedParamString}));
-                }
+                promisesAll.push(updateAccountsFromData({ accountData: [field] }));
+            } else if (this.detailsIds.includes(field.Id)) {
+                let patchUpdatedParamString = JSON.stringify([field]);
+                promisesAll.push(patchAccountsInAnotherOrg({ accData: patchUpdatedParamString }));
             }
         });
+        this.handlePromises(promisesAll);
+        this.combinedAccounts = [];
+        refreshApex(this.loadingAccounts());
+    }
+
+    handlePromises(promisesAll) {
+        this.isLoading = true;
         
         Promise.all(promisesAll)
-            .then (result =>  {
-                console.log('apex res ' + JSON.stringify(result));
-                this.combinedAccounts = [];
-                refreshApex(this.loadingAccounts());
-                this.showToast('Success', 'Records Updated Successfully!', 'success');
-            })
-            .catch (err => {
-                console.log('apex err ' + JSON.stringify(err));
-                this.showToast('Error', 'Changes not saved!', 'error');
-            }) 
-            .finally(() => {
-                this.isLoading = false;
-            });
+        .then (result =>  {
+            this.showToast('Success', 'Records Updated Successfully!', 'success');
+        })
+        .catch (err => {
+            console.log('apex err ' + JSON.stringify(err));
+            this.showToast('Error', 'Changes not saved!', 'error');
+        }) 
+        .finally(() => {
+            this.isLoading = false;
+        });
     }
-    handelCancel(event){
+
+    handleCancel(event){
         this.draftValues = []; 
     }
 

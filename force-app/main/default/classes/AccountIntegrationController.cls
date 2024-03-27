@@ -1,84 +1,49 @@
 public class AccountIntegrationController {
-    @AuraEnabled
-    // @future(callout=true)
-    public static List<Account> getDetails() {
+    public static String ACCOUNTS_ENDPOINT = '/services/apexrest/Account';
 
-        HttpRequest req = new HttpRequest();
-        req.setEndpoint('callout:ReturnContact/services/apexrest/Account');
-        req.setHeader('content-type', 'application/json; charset=UTF-8');
-        req.setHeader('Accept', 'application/json');
-        req.setMethod('GET');
-        Http http = new Http();
-        HttpResponse respon =  http.send(req);
-        
-        System.debug('response---Code------' + respon.getStatusCode());
-        // System.debug('response---body------' + respon.getBody());
+    @AuraEnabled
+    public static List<Account> getAccountsFromAnotherOrg() {
+        String method = 'GET';
+        String body = '';
         List<Account> accounts = new List<Account>();
 
-        if(respon.getStatusCode() == 200) {
-            List<Object> jsonResults = (List<Object>) JSON.DeserializeUntyped(respon.getBody());
-            // System.debug('jsonResults'+jsonResults);
-             for (object ac : jsonResults) {
-                Map<String, Object> acMap = (Map<String, Object>)ac;
-                Account account = new Account();
-                account.Id = (Id) acMap.get('Id');
-                account.Name = (String) acMap.get('Name');
-                account.AccountNumber = (String) acMap.get('AccountNumber');
-                account.Rating = (String) acMap.get('Rating');
-                account.TickerSymbol = (String) acMap.get('TickerSymbol');
-                account.Type = (String) acMap.get('Type');
+        HttpCallouts.HttpResponseWrapper response = HttpCallouts.executeHttpRequest(ACCOUNTS_ENDPOINT, method, body);
 
-                accounts.add(account);
-             }
-            
-        }else {
-            System.debug('Error: HTTP request failed with status code ' + respon.getStatusCode());
-            throw new CalloutException('Error: HTTP request failed with status code ' + respon.getStatusCode());
-        }  
-            // System.debug('List accounts++++' + accounts);
-            return accounts;
-    }
-        
-    @AuraEnabled
-    public static String patchDetails(String accData) {
-    
-        System.debug('Patch details: ' + accData);
-    
-        HttpRequest req = new HttpRequest();
-        req.setEndpoint('callout:ReturnContact/services/apexrest/Account');
-        req.setHeader('Content-Type', 'application/json; charset=UTF-8');
-        req.setHeader('Accept', 'application/json');
-        req.setBody(accData); 
-        req.setMethod('PATCH');
-        Http http = new Http();
-        HttpResponse response = http.send(req);
-
-        if(response.getStatusCode() == 200) {
-            System.debug('response: ' + response.getStatusCode());
-            System.debug('response: ' + response.getBody());
-            return 'Success';
+        if(response.statusCode == 200 &&  response.statusCode < 300) {
+            accounts = (List<Account>) JSON.deserialize(response.responseBody, List<Account>.class);
+        }else{
+            throw new CalloutException('Error: HTTP request failed with status code ' + response.statusCode);
         }
-        return 'Failed';
+        return accounts;
+    }
+        
+    @AuraEnabled
+    public static void patchAccountsInAnotherOrg(String accData) {
+        String method = 'PATCH';
+        String body = accData;
+        
+        HttpCallouts.HttpResponseWrapper response = HttpCallouts.executeHttpRequest(ACCOUNTS_ENDPOINT, method, body);
+        System.debug(response);
+        if(response.statusCode != 200 &&  response.statusCode < 300) {
+            System.debug('response: ' + response.statusCode);
+            System.debug('response: ' +  response.responseBody);
+            throw new CalloutException('Error: HTTP request failed with status code ' + response.statusCode);
+        }
         
     }
     
     @AuraEnabled
-    public static List<Account> returnAccounts() {
-        return [SELECT Id, Name, Type, AccountNumber, Rating, TickerSymbol FROM Account];
+    public static List<Account> getAccountsFromData() {
+        return [SELECT Name, Type, AccountNumber, Rating, TickerSymbol FROM Account];
     }
 
     @AuraEnabled
-    public static String updateReturnAccounts(Object accountData){
+    public static void updateAccountsFromData(Object accountData){
         
-        List<Account> accList = (List<Account>) JSON.deserialize(JSON.serialize(accountData), List<Account>.class);
+        List<Account> accountList = (List<Account>) JSON.deserialize(JSON.serialize(accountData), List<Account>.class);
         
-        if(!accList.isEmpty()) {
-            update accList;
-            return 'Success';
+        if(!accountList.isEmpty()) {
+            update accountList;
         }
-
-        return 'Failed';
-
-        
     }
 }

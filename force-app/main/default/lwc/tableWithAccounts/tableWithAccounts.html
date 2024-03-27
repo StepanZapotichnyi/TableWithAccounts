@@ -5,27 +5,23 @@
                 <lightning-spinner alternative-text="Loading" size="small"></lightning-spinner>
             </div>
         </template>
-        
-        <template lwc:if={listAcc} >
+        <template lwc:if={accountsList} >
             <div class="slds-m-around_medium ">
                 <lightning-datatable key-field="Id" 
-                                     data={listAcc} 
+                                     data={accountsList} 
                                      columns={columns} 
                                      hide-checkbox-column = "true" 
                                      show-row-number-column="true"
-                                     onsave={handelSave}
-                                     oncancel={handelCancel}
+                                     onsave={handleSave}
+                                     oncancel={handleCancel}
                                      draft-values={draftValues}>
                 </lightning-datatable> 
             </div>
         </template>
-        
-
-        
         <div class="slds-m-around_medium">
             <lightning-button label="Update" onclick={handleUpdate} variant="brand"></lightning-button>
             <div class="slds-float_right">
-                <c-paginator onprevious={prevHandel} page={page}  total-page={totalPage} onnext={nextHandel}>
+                <c-paginator onprevious={prevHandel} page-number={pageNumber}  number-of-pages={numberOfPages} onnext={nextHandel}>
         
                 </c-paginator>
             </div>
