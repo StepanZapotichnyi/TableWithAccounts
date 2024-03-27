@@ -22,8 +22,8 @@ export default class TableWithAccounts extends LightningElement {
     @track numberOfPages;
     @track draftValues = [];
     
-    returnAccIds = [];
-    detailsIds = [];
+    accountIdFromData = [];
+    accountIdFromAnotherOrg = [];
     
     isLoading = false;
     combinedAccounts = [];
@@ -42,11 +42,11 @@ export default class TableWithAccounts extends LightningElement {
 
         Promise.all([getAccountsFromAnotherOrg(), getAccountsFromData()])
             .then(responses => {
-                this.detailsIds = responses[0].map(detail => detail.Id);
-                console.log('result DetailsIds' + this.detailsIds);
+                this.accountIdFromAnotherOrg = responses[0].map(detail => detail.Id);
+                console.log('result accountIdFromAnotherOrg' + this.accountIdFromAnotherOrg);
                 
-                this.returnAccIds = responses[1].map(account => account.Id);
-                console.log('result returnAccIds' + this.returnAccIds);
+                this.accountIdFromData = responses[1].map(account => account.Id);
+                console.log('result accountIdFromData' + this.accountIdFromData);
                 
                  responses.forEach(response => {
                         let mappedResponse = response.map(acc => ({
@@ -75,7 +75,7 @@ export default class TableWithAccounts extends LightningElement {
     }
 
     identifyOrganization(idAccount) {
-        return this.detailsIds.includes(idAccount) ? 'Org First' : (this.returnAccIds.includes(idAccount) ? 'Org Second' : 'unknown');
+        return this.accountIdFromAnotherOrg.includes(idAccount) ? 'Org First' : (this.accountIdFromData.includes(idAccount) ? 'Org Second' : 'unknown');
     }
 
     prevHandel(event) {
@@ -104,9 +104,9 @@ export default class TableWithAccounts extends LightningElement {
         let promisesAll = [];           
 
         draftValues.forEach(field => {
-            if (this.returnAccIds.includes(field.Id)) {
+            if (this.accountIdFromData.includes(field.Id)) {
                 promisesAll.push(updateAccountsFromData({ accountData: [field] }));
-            } else if (this.detailsIds.includes(field.Id)) {
+            } else if (this.accountIdFromAnotherOrg.includes(field.Id)) {
                 let patchUpdatedParamString = JSON.stringify([field]);
                 promisesAll.push(patchAccountsInAnotherOrg({ accData: patchUpdatedParamString }));
             }
