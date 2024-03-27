@@ -1,112 +1,148 @@
 import { LightningElement, track } from 'lwc';
-import getDetails from '@salesforce/apex/AccountIntegrationController.getDetails';
-import returnAccounts from '@salesforce/apex/AccountIntegrationController.returnAccounts';
+import getAccountsFromAnotherOrg from '@salesforce/apex/AccountIntegrationController.getAccountsFromAnotherOrg';
+import patchAccountsInAnotherOrg from '@salesforce/apex/AccountIntegrationController.patchAccountsInAnotherOrg';
+import getAccountsFromData from '@salesforce/apex/AccountIntegrationController.getAccountsFromData';
+import updateAccountsFromData from '@salesforce/apex/AccountIntegrationController.updateAccountsFromData';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+import { refreshApex } from '@salesforce/apex';
 
-const pageSize = 7;   
-const columns = [
+const PAGE_SIZE = 7;   
+const COLUMNS = [
     {label: 'Name', fieldName : 'name'},
     {label: 'Account Number', fieldName : 'accountNumber', editable : true},
     {label: 'Ticker Symbol', fieldName : 'tickerSymbol', editable : true},
     {label: 'Rating', fieldName : 'rating', editable : true},
-    {label: 'Type', fieldName : 'type', editable : true}
+    {label: 'Type', fieldName : 'type', editable : true},
+    {label: 'Org', fieldName : 'org'}
 ];
-
 export default class TableWithAccounts extends LightningElement {
 
-    @track listAcc = [];
-    @track isLoading = false;
-    @track page = 1;
-    @track totalPage;
-
-    detailsPromise = [];
-    accountsPromise = [];
-
+    @track accountsList = [];
+    @track pageNumber = 1;
+    @track numberOfPages;
+    @track draftValues = [];
+    
+    accountIdFromData = [];
+    accountIdFromAnotherOrg = [];
+    
+    isLoading = false;
     combinedAccounts = [];
-    startingRecord = 1;
-    endingRecord = 0;
+    startingPageIndex = 1;
+    endingPageIndex = 0;
     totalRecordCount;
-    columns = columns;
-
-    fildsItemValues = [];
+    columns = COLUMNS;
 
 
-
-
-    connectedCallback() {
+    connectedCallback() { 
         this.loadingAccounts();
     }
 
     loadingAccounts() {
         this.isLoading = true;
 
-        this.accountsPromise = returnAccounts();
-        this.detailsPromise = getDetails();
-        console.log('result 1+++' + this.detailsPromise);
-        console.log('result 1+++' + this.accountsPromise);
-
-        Promise.all([getDetails(), returnAccounts()])
-            // async await
+        Promise.all([getAccountsFromAnotherOrg(), getAccountsFromData()])
             .then(responses => {
-                this.detailsPromise = responses[0];
-                this.accountsPromise = responses[1];
-                console.log('result' + this.detailsPromise);
-                console.log('result' + this.accountsPromise);
-
-                responses.forEach(response => {
-                    this.combinedAccounts = this.combinedAccounts.concat(response.map(acc => ({
-                        Id: acc.Id,
-                        name: acc.Name,
-                        accountNumber: acc.AccountNumber,
-                        rating: acc.Rating,
-                        tickerSymbol: acc.TickerSymbol,
-                        type: acc.Type
-                    })));
-                });
-
+                this.accountIdFromAnotherOrg = responses[0].map(detail => detail.Id);
+                console.log('result accountIdFromAnotherOrg' + this.accountIdFromAnotherOrg);
+                
+                this.accountIdFromData = responses[1].map(account => account.Id);
+                console.log('result accountIdFromData' + this.accountIdFromData);
+                
+                 responses.forEach(response => {
+                        let mappedResponse = response.map(acc => ({
+                            Id: acc.Id,
+                            name: acc.Name,
+                            accountNumber: acc.AccountNumber,
+                            rating: acc.Rating,
+                            tickerSymbol: acc.TickerSymbol,
+                            type: acc.Type,
+                            org : this.identifyOrganization(acc.Id)
+                        }));
+                        this.combinedAccounts = this.combinedAccounts.concat(mappedResponse);
+                    });
 
                 this.totalRecordCount = this.combinedAccounts.length;
-                this.totalPage = Math.ceil(this.totalRecordCount/ pageSize);
-                this.displayRecordPerPage(this.page);
+                this.numberOfPages = Math.ceil(this.totalRecordCount/ PAGE_SIZE);
+                this.displayRecordPerPage(this.pageNumber);
 
             })
             .catch(error => {
-                this.dispatchEvent(
-                    new ShowToastEvent({
-                        title: 'Error',
-                        message: 'Failed to retrieve accounts',
-                        variant: 'error'
-                    })
-                );
+                this.showToast('Success', 'Failed to retrieve accounts', 'error');
             })
             .finally(() => {
                 this.isLoading = false;
             });
     }
 
+    identifyOrganization(idAccount) {
+        return this.accountIdFromAnotherOrg.includes(idAccount) ? 'Org First' : (this.accountIdFromData.includes(idAccount) ? 'Org Second' : 'unknown');
+    }
+
     prevHandel(event) {
-        if(this.page > 1) {
-            this.page -= 1;
-            this.displayRecordPerPage(this.page);
+        if(this.pageNumber > 1) {
+            this.pageNumber -= 1;
+            this.displayRecordPerPage(this.pageNumber);
         }
     }
 
     nextHandel(event) {
-        if(this.page < this.totalPage && this.page !== this.totalPage) {
-            this.page += 1;
-            this.displayRecordPerPage(this.page);
+        if(this.pageNumber < this.numberOfPages && this.page !== this.numberOfPages) {
+            this.pageNumber += 1;
+            this.displayRecordPerPage(this.pageNumber);
         }
     }
 
     displayRecordPerPage(page) {
-        this.startingRecord = (page - 1) * pageSize;
-        this.endingRecord = page * pageSize;
-        this.listAcc = this.combinedAccounts.slice(this.startingRecord, this.endingRecord);
+        this.startingPageIndex = (page - 1) * PAGE_SIZE;
+        this.endingPageIndex = page * PAGE_SIZE;
+        this.accountsList = this.combinedAccounts.slice(this.startingPageIndex, this.endingPageIndex);
     }
 
-    handleUpdate(event) {
-        this.fildsItemValues = event.detail.draftValues;
-        console.log(this.fildsItemValues);
+
+    handleSave(event) {
+        let draftValues = event.detail.draftValues;
+        let promisesAll = [];           
+
+        draftValues.forEach(field => {
+            if (this.accountIdFromData.includes(field.Id)) {
+                promisesAll.push(updateAccountsFromData({ accountData: [field] }));
+            } else if (this.accountIdFromAnotherOrg.includes(field.Id)) {
+                let patchUpdatedParamString = JSON.stringify([field]);
+                promisesAll.push(patchAccountsInAnotherOrg({ accData: patchUpdatedParamString }));
+            }
+        });
+        this.handlePromises(promisesAll);
+        this.combinedAccounts = [];
+        refreshApex(this.loadingAccounts());
     }
-    
+
+    handlePromises(promisesAll) {
+        this.isLoading = true;
+        
+        Promise.all(promisesAll)
+        .then (result =>  {
+            this.showToast('Success', 'Records Updated Successfully!', 'success');
+        })
+        .catch (err => {
+            console.log('apex err ' + JSON.stringify(err));
+            this.showToast('Error', 'Changes not saved!', 'error');
+        }) 
+        .finally(() => {
+            this.isLoading = false;
+        });
+    }
+
+    handleCancel(event){
+        this.draftValues = []; 
+    }
+
+    showToast(title, message, variant) {
+        const evt = new ShowToastEvent({
+            title: title,
+            message: message,
+            variant: variant
+        });
+        this.dispatchEvent(evt);
+    }     
+
 }
